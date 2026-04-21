@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Playerok Bot — Админ панель</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0f0f0f; color: #e0e0e0; }
+        .sidebar { width: 220px; height: 100vh; background: #1a1a1a; position: fixed; padding: 20px 0; border-right: 1px solid #2a2a2a; }
+        .sidebar h2 { color: #7c4dff; padding: 0 20px 20px; font-size: 18px; border-bottom: 1px solid #2a2a2a; }
+        .sidebar nav a { display: block; padding: 12px 20px; color: #aaa; text-decoration: none; transition: all 0.2s; }
+        .sidebar nav a:hover, .sidebar nav a.active { background: #2a2a2a; color: #fff; border-left: 3px solid #7c4dff; }
+        .main { margin-left: 220px; padding: 30px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .header h1 { font-size: 22px; }
+        .login-box { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 12px; padding: 40px; max-width: 400px; margin: 100px auto; }
+        .login-box h2 { margin-bottom: 20px; color: #7c4dff; }
+        input { width: 100%; padding: 10px 14px; background: #0f0f0f; border: 1px solid #333; border-radius: 8px; color: #fff; font-size: 14px; margin-bottom: 12px; }
+        button { padding: 10px 20px; background: #7c4dff; border: none; border-radius: 8px; color: #fff; cursor: pointer; font-size: 14px; }
+        button:hover { background: #6a3de8; }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 30px; }
+        .stat-card { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 12px; padding: 20px; }
+        .stat-card .label { font-size: 12px; color: #777; margin-bottom: 6px; }
+        .stat-card .value { font-size: 28px; font-weight: bold; color: #7c4dff; }
+        table { width: 100%; border-collapse: collapse; background: #1a1a1a; border-radius: 12px; overflow: hidden; }
+        th { background: #222; padding: 12px 16px; text-align: left; font-size: 12px; color: #777; text-transform: uppercase; }
+        td { padding: 12px 16px; border-top: 1px solid #222; font-size: 13px; }
+        tr:hover td { background: #222; }
+        .badge { padding: 3px 8px; border-radius: 20px; font-size: 11px; }
+        .badge.green { background: #1a3a1a; color: #4caf50; }
+        .badge.red { background: #3a1a1a; color: #f44336; }
+        .badge.blue { background: #1a2a3a; color: #2196f3; }
+        .badge.yellow { background: #3a3a1a; color: #ffeb3b; }
+        .section { margin-bottom: 30px; }
+        .section h2 { font-size: 16px; margin-bottom: 16px; color: #aaa; }
+        .filter-bar { display: flex; gap: 10px; margin-bottom: 16px; }
+        .filter-bar input { margin: 0; width: auto; flex: 1; }
+        #page-dashboard, #page-users, #page-logs { display: none; }
+        .tab-content.active { display: block; }
+    </style>
+</head>
+<body>
+
+<!-- Login -->
+<div id="login-screen">
+    <div class="login-box">
+        <h2>🔐 Вход в панель</h2>
+        <input type="password" id="admin-key" placeholder="Введи админ ключ" />
+        <button onclick="login()">Войти</button>
+        <p id="login-error" style="color:#f44;margin-top:10px;font-size:13px;"></p>
+    </div>
+</div>
+
+<!-- Panel -->
+<div id="panel" style="display:none;">
+    <div class="sidebar">
+        <h2>⚡ Playerok Bot</h2>
+        <nav>
+            <a href="#" class="active" onclick="showPage('dashboard', this)">📊 Дашборд</a>
+            <a href="#" onclick="showPage('users', this)">👥 Пользователи</a>
+            <a href="#" onclick="showPage('logs', this)">📋 Логи</a>
+        </nav>
+    </div>
+
+    <div class="main">
+        <!-- Dashboard -->
+        <div id="page-dashboard" class="tab-content">
+            <div class="header"><h1>📊 Дашборд</h1><button onclick="loadAll()">🔄 Обновить</button></div>
+            <div class="stats">
+                <div class="stat-card"><div class="label">Всего пользователей</div><div class="value" id="stat-total">—</div></div>
+                <div class="stat-card"><div class="label">Авторизованных</div><div class="value" id="stat-auth">—</div></div>
+            </div>
+            <div class="section">
+                <h2>Последние логи</h2>
+                <table>
+                    <thead><tr><th>Время</th><th>Пользователь</th><th>Уровень</th><th>Действие</th><th>Детали</th></tr></thead>
+                    <tbody id="logs-table-dash"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Users -->
+        <div id="page-users" class="tab-content">
+            <div class="header"><h1>👥 Пользователи</h1><button onclick="loadUsers()">🔄 Обновить</button></div>
+            <table>
+                <thead><tr><th>Telegram ID</th><th>Username</th><th>Playerok</th><th>Email</th><th>Статус</th><th>Регистрация</th></tr></thead>
+                <tbody id="users-table"></tbody>
+            </table>
+        </div>
+
+        <!-- Logs -->
+        <div id="page-logs" class="tab-content">
+            <div class="header"><h1>📋 Логи</h1><button onclick="loadLogs()">🔄 Обновить</button></div>
+            <div class="filter-bar">
+                <input type="text" id="filter-tg-id" placeholder="Фильтр по Telegram ID" />
+                <button onclick="loadLogs()">Найти</button>
+            </div>
+            <table>
+                <thead><tr><th>Время</th><th>Telegram ID</th><th>Уровень</th><th>Действие</th><th>Детали</th></tr></thead>
+                <tbody id="logs-table"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    let ADMIN_KEY = '';
+    let API_URL = '';
+
+    function login() {
+        const key = document.getElementById('admin-key').value.trim();
+        const url = prompt('Введи URL бэкенда (например: https://your-app.railway.app)');
+        if (!key || !url) return;
+        ADMIN_KEY = key;
+        API_URL = url.replace(/\/$/, '');
+        fetch(`${API_URL}/admin/stats?key=${ADMIN_KEY}`)
+            .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+            .then(() => {
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('panel').style.display = 'block';
+                showPage('dashboard');
+                loadAll();
+            })
+            .catch(() => {
+                document.getElementById('login-error').textContent = '❌ Неверный ключ или URL';
+            });
+    }
+
+    function showPage(page, el) {
+        document.querySelectorAll('.tab-content').forEach(e => e.style.display = 'none');
+        document.querySelectorAll('.sidebar nav a').forEach(a => a.classList.remove('active'));
+        document.getElementById(`page-${page}`).style.display = 'block';
+        if (el) el.classList.add('active');
+        if (page === 'dashboard') loadAll();
+        if (page === 'users') loadUsers();
+        if (page === 'logs') loadLogs();
+    }
+
+    function loadAll() {
+        fetch(`${API_URL}/admin/stats?key=${ADMIN_KEY}`).then(r => r.json()).then(d => {
+            document.getElementById('stat-total').textContent = d.total_users;
+            document.getElementById('stat-auth').textContent = d.authorized_users;
+        });
+        fetch(`${API_URL}/admin/logs?key=${ADMIN_KEY}&limit=20`).then(r => r.json()).then(logs => {
+            renderLogs(logs, 'logs-table-dash');
+        });
+    }
+
+    function loadUsers() {
+        fetch(`${API_URL}/admin/users?key=${ADMIN_KEY}`).then(r => r.json()).then(users => {
+            const tbody = document.getElementById('users-table');
+            tbody.innerHTML = users.map(u => `
+                <tr>
+                    <td>${u.telegram_id}</td>
+                    <td>${u.telegram_username ? '@' + u.telegram_username : '—'}</td>
+                    <td>${u.playerok_username || '—'}</td>
+                    <td>${u.playerok_email || '—'}</td>
+                    <td><span class="badge ${u.is_authorized ? 'green' : 'red'}">${u.is_authorized ? 'Авторизован' : 'Не авторизован'}</span></td>
+                    <td>${formatDate(u.created_at)}</td>
+                </tr>
+            `).join('');
+        });
+    }
+
+    function loadLogs() {
+        const filterId = document.getElementById('filter-tg-id')?.value.trim();
+        let url = `${API_URL}/admin/logs?key=${ADMIN_KEY}&limit=100`;
+        if (filterId) url += `&telegram_id=${filterId}`;
+        fetch(url).then(r => r.json()).then(logs => renderLogs(logs, 'logs-table'));
+    }
+
+    function renderLogs(logs, tableId) {
+        const levelColor = { INFO: 'blue', WARNING: 'yellow', ERROR: 'red' };
+        document.getElementById(tableId).innerHTML = logs.map(l => `
+            <tr>
+                <td>${formatDate(l.created_at)}</td>
+                <td>${l.telegram_id}</td>
+                <td><span class="badge ${levelColor[l.level] || 'blue'}">${l.level}</span></td>
+                <td>${l.action}</td>
+                <td>${l.details || '—'}</td>
+            </tr>
+        `).join('');
+    }
+
+    function formatDate(dt) {
+        if (!dt) return '—';
+        return new Date(dt).toLocaleString('ru-RU');
+    }
+
+    document.getElementById('admin-key').addEventListener('keydown', e => {
+        if (e.key === 'Enter') login();
+    });
+</script>
+</body>
+</html>
